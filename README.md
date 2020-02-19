@@ -12,7 +12,7 @@ The combination of Nerve and [Synapse](https://github.com/airbnb/synapse) make s
 We already use [Synapse](https://github.com/airbnb/synapse) to discover remote services.
 However, those services needed boilerplate code to register themselves in [Zookeeper](http://zookeeper.apache.org/).
 Nerve simplifies underlying services, enables code reuse, and allows us to create a more composable system.
-It does so by factoring out the boilerplate into it's own application, which independenly handles monitoring and reporting.
+It does so by factoring out the boilerplate into it's own application, which independently handles monitoring and reporting.
 
 Beyond those benefits, nerve also acts as a general watchdog on systems.
 The information it reports can be used to take action from a centralized automation center: action like scaling distributed systems up or down or alerting ops or engineering about downtime.
@@ -41,6 +41,13 @@ permissions. You can also install via bundler, but keep in mind you'll pick up
 Nerve's version of library dependencies and possibly not the ones you need
 for your infra/apps.
 
+You can now run the nerve binary like:
+
+```bash
+export GEM_PATH=/opt/smartstack/nerve
+/opt/smartstack/nerve/bin/nerve --help
+```
+
 ## Configuration ##
 
 Nerve depends on a single configuration file, in json format.
@@ -63,21 +70,34 @@ The configuration contains the following options:
 * `port`: the default port for service checks; nerve will report the `host`:`port` combo via your chosen reporter
 * `reporter_type`: the mechanism used to report up/down information; depending on the reporter you choose, additional parameters may be required. Defaults to `zookeeper`
 * `check_interval`: the frequency with which service checks will be initiated; defaults to `500ms`
+* `check_mocked`: whether or not health check is mocked, the host check always returns healthy and report up when the value is true
 * `checks`: a list of checks that nerve will perform; if all of the pass, the service will be registered; otherwise, it will be un-registered
+* `rate_limiting` (optional): a hash containing the configuration for rate limiting (see 'Rate Limiting' below)
 * `weight` (optional): a positive integer weight value which can be used to affect the haproxy backend weighting in synapse.
 * `haproxy_server_options` (optional): a string containing any special haproxy server options for this service instance. For example if you wanted to set a service instance as a backup.
 * `labels` (optional): an object containing user-defined key-value pairs that describe this service instance. For example, you could label service instances with datacenter information.
+
+#### Rate Limiting ####
+
+Rate limiting is configured in the `rate_limiting` hash. If enabled, rate limiting is done via the [Token-Bucket algorithm](https://en.wikipedia.org/wiki/Token_bucket).
+That hash contains the following values:
+
+* `shadow_mode` (optional): shadow mode emits metrics/logs for rate limiting, but does not actually throttle requests (defaults to `true`). Set to `false` to throttle requests.
+* `average_rate` (optional): enforced average rate limit for reporting (defaults to `infinity`)
+* `max_burst` (optional): enforced maximum burst for reporting (defaults to `infinity`)
 
 #### Zookeeper Reporter ####
 
 If you set your `reporter_type` to `"zookeeper"` you should also set these parameters:
 
 * `zk_hosts`: a list of the zookeeper hosts comprising the [ensemble](https://zookeeper.apache.org/doc/r3.1.2/zookeeperAdmin.html#sc_zkMulitServerSetup) that nerve will submit registration to
-* `zk_path`: the path (or [znode](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#sc_zkDataModel_znodes)) where the registration will be created; nerve will create the [ephemeral node](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#Ephemeral+Nodes) that is the registration as a child of this path
+* `zk_path`: the path (or [znode](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#sc_zkDataModel_znodes)) where the registration will be created
+* `use_path_encoding`: optional flag to turn on path encoding optimization, the canonical config data at host level (e.g. ip, port, az) is encoded using json base64 and written as zk child name, the zk child data will still be written for backward compatibility
+* `node_type`: the [type](https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#Ephemeral+Nodes) of znode that nerve will register as. The available types are `ephemeral_sequential`, `persistent_sequential`, `persistent`, and `ephemeral`. If not specified, nerve will create the znode as `ephemeral_sequential` type by default
 
 #### Etcd Reporter ####
 
-Note: Etcd support is currently experimental! 
+Note: Etcd support is currently experimental!
 
 If you set your `reporter_type` to `"etcd"` you should also set these parameters:
 
