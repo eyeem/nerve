@@ -67,7 +67,7 @@ GEM
       thread_safe (~> 0.1)
     zk (1.9.6)
       zookeeper (~> 1.4.0)
-    zookeeper (1.4.11)
+    zookeeper (1.5.5)
 
 PLATFORMS
   ruby
